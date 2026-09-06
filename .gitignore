@@ -1,0 +1,23 @@
+.venv/
+.venv311/
+__pycache__/
+*.pyc
+.DS_Store
+
+# word lists: not redistributed. supply data/train.txt yourself; the
+# splits regenerate from it via src/split_data.py (seed 42)
+data/train.txt
+data/train_split.txt
+data/holdout_split.txt
+
+# generated state pools and derived vocabularies (regenerate via the pipeline)
+data/states*/
+data/train_augmented.txt
+data/vocab_subsets/
+
+# checkpoints and run artifacts
+models/
+*.pt
+*.cbm
+catboost_info/
+results/

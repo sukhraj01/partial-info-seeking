@@ -1,0 +1,8 @@
+# core: state generation, training, benchmarking
+numpy>=1.26
+torch>=2.2
+
+# optional, per experiment:
+#   catboost>=1.2        -> src/catboost_model.py, train_catboost.py (GBM control)
+#   transformers>=4.38   -> train_pretrained.py (CANINE fine-tune)
+#   matplotlib>=3.8      -> plot_vocab_scaling.py
