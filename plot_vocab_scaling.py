@@ -14,7 +14,7 @@ Fits two models, because they disagree about the thing we actually want to know:
 If the saturating fit's A sits far above the largest measured point, more
 vocabulary is still the best available lever. If A is close, the well is dry.
 
-  python plot_vocab_scaling.py --out results/vocab_scaling.png
+  python plot_vocab_scaling.py --out figures/vocab_scaling.png
 """
 import argparse
 import glob
@@ -77,8 +77,8 @@ def fit_saturating(x, y):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--results-dir", default="results")
-    ap.add_argument("--out", default="results/vocab_scaling.png")
-    ap.add_argument("--json-out", default="results/vocab_scaling.json")
+    ap.add_argument("--out", default="figures/vocab_scaling.png")
+    ap.add_argument("--json-out", default="figures/vocab_scaling.json")
     args = ap.parse_args()
 
     print("Vocabulary scaling points:")
@@ -138,9 +138,9 @@ def main():
     ax.set_xscale("log")
     ax.set_xlabel("training vocabulary (words, log scale)")
     ax.set_ylabel("disjoint win rate (%)")
-    ax.set_title("Hangman: vocabulary size vs out-of-vocabulary win rate\n"
-                 "19.2M per-position transformer · 128 states/word · 95,600 steps",
-                 fontsize=11)
+    ax.set_title("Vocabulary size vs out-of-vocabulary win rate\n"
+                 "19.2M per-position transformer · 128 states/word · "
+                 "95,600 steps · all else held constant", fontsize=11)
     ax.grid(alpha=0.3, which="both")
     ax.legend(fontsize=9, loc="lower right")
 
@@ -157,8 +157,9 @@ def main():
     ax2.set_xscale("log")
     ax2.set_xlabel("training vocabulary (words, log scale)")
     ax2.set_ylabel("win rate (%)")
-    ax2.set_title("The gap closes as vocabulary grows\n"
-                  "(memorisation gives way to generalisation)", fontsize=11)
+    ax2.set_title("Both curves rise together; the gap WIDENS then plateaus\n"
+                  "(the 50K gap is small because the model cannot fit even its "
+                  "own training words)", fontsize=10)
     ax2.grid(alpha=0.3, which="both")
     ax2.legend(fontsize=9)
 

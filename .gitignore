@@ -21,3 +21,6 @@ models/
 *.cbm
 catboost_info/
 results/
+
+# figures/ IS tracked: it holds the paper's figure and the fitted
+# scaling numbers behind it, which are the central evidence.
