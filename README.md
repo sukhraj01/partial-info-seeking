@@ -2,14 +2,17 @@
 
 An empirical study of what limits out-of-distribution generalization in a
 sequential information-acquisition agent. **Generalization scales with environment
-diversity, and is nearly insensitive to how densely each environment is sampled.**
-Across an 8× vocabulary sweep at fixed compute, disjoint win rate rises
-**58.28% → 73.96%**, a clean **+5.38pp per doubling** (R² = 0.964) that saturates
-toward an estimated ceiling near 80%. The two obvious levers do almost nothing:
-quadrupling parameters buys +1.5pp while *doubling* the memorization gap, and
-doubling the sampling of the same environments buys +0.03pp — 12 words out of
-45,060. Sample density turns out to control memorization (±9pp of gap) rather
-than competence (±1pp of disjoint win rate).
+diversity, and additional model capacity helps only once that diversity is
+sufficient.** Across an 8× vocabulary sweep at fixed compute, disjoint win rate
+rises **58.28% → 73.96%**, a clean **+5.38pp per doubling** (R² = 0.964) that
+saturates toward an estimated ceiling near 80%. A 2×2 capacity × diversity grid
+then shows the two axes are not independent: 3× the parameters (19.2M → 57M)
+*costs* **1.02pp** at 180K words and *gains* **1.36pp** at 390K — a **+2.39pp
+interaction**, and a change of sign rather than of magnitude. The best model here,
+57M parameters at 390K words, reaches **75.33%** disjoint. Sample density, by
+contrast, controls memorization (±9pp of gap) rather than competence (±1pp of
+disjoint win rate): doubling the sampling of the same environments buys +0.03pp —
+12 words out of 45,060.
 
 ---
 
@@ -95,21 +98,74 @@ So the two axes act on different quantities:
   win rate by ~1pp. Denser sampling of the same environments buys recall, not
   competence.
 
+### Capacity and diversity interact
+
+**Capacity and diversity interact: additional parameters actively harm
+generalization when environment diversity is insufficient (−1.02pp), and help only
+once diversity exceeds a threshold (+1.36pp).** The mechanism is visible in the
+training dynamics — the 57M model at 180K vocabulary overfits from epoch 1, with
+validation loss rising monotonically, and its best checkpoint uses only 23% of the
+training budget.
+
+![capacity × diversity interaction](figures/capacity_interaction.png)
+
+Four runs, identical in every respect except parameter count and vocabulary size
+(128 states per word, exactly 95,600 optimizer steps, effective batch 2048, same
+schedule and hardware, same 45,060-word disjoint holdout, same
+best-val-win-rate checkpoint rule):
+
+| | 180K vocab | 390K vocab | capacity effect |
+|---|---|---|---|
+| **19.2M params** | 70.66% | 73.96% | — |
+| **57M params** | **69.64%** | **75.33%** | — |
+| **effect** | **−1.02pp** | **+1.36pp** | **interaction: +2.39pp** |
+
+Both effects are outside evaluation noise — 3.3σ and 4.7σ against an unpaired
+binomial standard error of ~0.30pp on 45,060 words. The sign flip, not the
+magnitude, is the result: there is no single "effect of capacity" to quote here
+without naming the diversity it was measured at.
+
+The training curves say why. At 390K words the 57M model improves for the whole
+budget (70.30 → 73.60 → 74.15 → 74.20% validation win rate) and its checkpoint
+comes from the final step. At 180K it peaks at **epoch 1 — step 22,050, 23% of the
+budget** — and then degrades for the remaining seven epochs while validation loss
+climbs monotonically from 0.2308 to 0.2446. The extra parameters find structure in
+390K environments and memorize 180K of them.
+
+Read the gap column with the caution from [below](#the-gap-is-not-a-generalization-score):
+57M @ 180K has the *narrowest* gap in the grid (5.33pp) and the *worst* disjoint
+score, because its in-distribution performance collapsed to 74.97% — below the
+19.2M model's 77.53%. It is the 50,000-word failure mode again, reached from the
+other direction.
+
+**Two caveats.** The four cells share an identical 95,600-step budget and an
+identical checkpoint-selection rule, but they do not reach their selected
+checkpoints at the same step (22,050 vs 88,200–95,600) — that disparity *is* the
+finding rather than a confound, but "equal compute" here describes the budget and
+the protocol, not the checkpoint. And this is one seed per cell: the standard
+errors above are evaluation-set noise only and say nothing about training-seed
+variance, which is unmeasured.
+
 ### Full ablation grid
 
 Each row changes exactly one variable, at identical compute:
 
 | ablation | change | in-distribution | **disjoint** | gap |
 |---|---|---|---|---|
-| **Capacity** | 4.9M → 19.2M params | +10.60 | **+1.50** | 7.1 → 16.2pp |
+| **Capacity** (180K words, 277 st/word) | 4.9M → 19.2M params | +10.60 | **+1.50** | 7.1 → 16.2pp |
+| **Capacity** (180K words, 128 st/word) | 19.2M → 57M params | −2.56 | **−1.02** | 6.9 → 5.3pp |
+| **Capacity** (390K words, 128 st/word) | 19.2M → 57M params | +5.40 | **+1.36** | 5.5 → 9.5pp |
 | **Sample density** | 50M → 100M states, same words | +0.36 | **+0.03** | 16.2 → 16.5pp |
 | **Sample density** | 277 → 128 states/word, same words | −7.81 | **+1.00** | 15.7 → 6.9pp |
 | **Inductive bias** | pooled head → per-position head | +0.66 | **+1.17** | 16.2 → 15.7pp |
 | **Environment diversity** | 50K → 390K words | +19.80 | **+15.68** | 1.4 → 5.5pp |
 
-Capacity is the instructive failure: 4× the parameters raises in-distribution
-performance 10.6pp and *more than doubles the memorization gap*, to buy 1.5pp of
-generalization. It is spent almost entirely on recall.
+Capacity is the instructive failure: at 180K words, 4× the parameters raises
+in-distribution performance 10.6pp and *more than doubles the memorization gap*,
+to buy 1.5pp of generalization. It is spent almost entirely on recall — and
+pushing further at that diversity turns the trade negative outright (−1.02pp).
+The same 3× step at 390K words instead buys +1.36pp, which is why the capacity
+rows cannot be collapsed into one number.
 
 ### The gap is not a generalization score
 
@@ -187,8 +243,10 @@ strings; `gap` is in-vocab minus disjoint.
 | P1 + n-gram blend (w=0.60) | — | 70.17% | 2.264 | — |
 | transformer S180 (180K vocab, 128 states/word) | 77.53% | 70.66% | 2.23 | 6.9pp |
 | transformer S250 (250K vocab, per-position) | 78.62% | 72.29% | 2.20 | 6.3pp |
-| **transformer V1 (390K vocab, per-position)** | 79.45% | **73.96%** | **2.165** | **5.5pp** |
-| **V1 + n-gram blend (w=0.75)** | — | **74.12%** | 2.175 | — |
+| transformer V1 (19.2M, 390K vocab, per-position) | 79.45% | 73.96% | 2.165 | 5.5pp |
+| V1 + n-gram blend (w=0.75) | — | 74.12% | 2.175 | — |
+| transformer CAP57_180K (57M, 180K vocab) | 74.97% | 69.64% | 2.273 | 5.3pp |
+| **transformer CAP57_390K (57M, 390K vocab)** | 84.85% | **75.33%** | **2.115** | 9.5pp |
 
 ### Negative results
 
@@ -197,6 +255,7 @@ strings; `gap` is in-vocab minus disjoint.
 | **DAgger on-policy retraining** | 67.00% → **65.42%** | In-vocab rose 7.25pp while disjoint *fell* and the gap doubled. The on-policy pools were small (1.78M + 1.90M states) and tied to a fixed word list, replaying each state ~25× more often than a uniform one. Diversity beats distribution-match on an OOD task. |
 | **Depth-1 expectimax** | 67.00% → **43.03%**, then **21.88%** after fixing two real bugs | The "fix" being worse was the tell — the bugs were not the cause. The value function was fitted only on greedily-visited states (AUC 0.826 there) and then queried off-distribution; its importances (entropy 31.9 vs budget 11.6) made it prefer whichever query left the tidiest posterior, barely charging for the life spent. |
 | **2× distinct states (100M pool)** | 68.50% → **68.52%** | 12 words out of 45,060, and the gap got *wider*. Falsified the inference that "data-limited" meant state-limited. See the key finding. |
+| **Restoring a truncated budget (57M @ 390K)** | 75.30% → **75.33%** | The first 57M run stopped at 71,700 of 95,600 steps — an epoch count derived from micro-batch rather than optimizer steps, so any config with gradient accumulation silently under-ran its budget. Restoring the missing 33% of compute *and* the full LR anneal moved 12 words out of 45,060: the same statistical zero as the 100M-state pool. The model had already converged; its final epoch was worth +0.05pp. |
 | **Pretrained CANINE-s (133M)** | **64.25%** vs 69.66% from scratch (per-position, same vocabulary) | Plateaued after ~30M states, ~15% of what the from-scratch model consumed. An LR sweep (2e-4 vs 5e-4) moved 0.3pp, confirming the bottleneck was data volume, not optimization. |
 | **CatBoost, 26 per-symbol GBMs** | capped at **58.03%** | 2M→4M states and 500→3000 iterations bought +0.48pp for 3.5× the training time. A ceiling, not a tuning problem. |
 | **Probability renormalization in the blend** | below raw blending at every matched weight | Both components estimate the same quantity on a common scale; normalizing discards the absolute confidence that made them combinable. |
@@ -254,6 +313,18 @@ The ablations: capacity via `--d-model`/`--layers`; sample density via
 `--n-states` and `src/mixture_dataset.py`; inductive bias by dropping
 `--positional`; diversity via `build_vocab_subsets.py`, which draws *nested*
 subsets from one shuffled pool so each point differs in size alone.
+
+The 2×2 grid is the 19.2M configuration above (`--layers 6 --d-model 512 --nhead 8
+--ff 2048`) and a 57M one (`--layers 8 --d-model 768 --nhead 12 --ff 3072`), each
+trained on `vocab_180k.txt` and on `data/train_augmented.txt`. The 57M model does
+not fit a 2048 micro-batch on an 11GB card, so it runs `--batch-size 1024
+--grad-accum 2` to hold the effective batch at 2048. Budget is equalised with
+`--max-steps 95600`, and `--epochs` must be large enough for that cap to bind:
+epochs are `ceil(steps / (rows_per_epoch / (batch × accum)))` — computing them
+from the *micro*-batch instead silently trains for `1/accum` of the intended
+budget. `plot_capacity_interaction.py` redraws the figure and recomputes the
+interaction from `results/benchmark_*.json`.
+
 `run_model_comparison.py` gives pairwise error correlation (φ, both-lose, union,
 McNemar) between two models; `run_paired_test.py` runs McNemar on sub-point
 differences. All seeds fixed.
@@ -273,9 +344,22 @@ split; `batch_sim.py` is the batched simulator, cross-checked against the scalar
 
 ## Limitations
 
-The largest measured gain has no measured ceiling — the vocabulary scaling curve
-is anchored at only two points (180K and 390K words), so whether generalization
-saturates or keeps climbing is open, and `build_vocab_subsets.py` /
-`plot_vocab_scaling.py` exist to answer it. 25.3% of holdout strings are solved by
-*no* model built here, and nothing tried moved that figure. All results are one
-seed per configuration; differences under ~0.5pp should be read as ties.
+The vocabulary scaling curve now has five points and a fitted ceiling near 80%,
+but that ceiling is an extrapolation from an 8× range: the largest run sits 6.1pp
+below it and nothing here tests past 390K words.
+
+The capacity × diversity interaction rests on four runs, one seed per cell. The
+standard errors quoted for it (~0.30pp) are evaluation-set noise on 45,060 words
+and do not cover training-seed variance, which is unmeasured — a replicate seed
+per cell is the obvious hardening step before the sign flip is leaned on hard. The
+interaction is also measured at exactly two capacities and two diversities, so
+"once diversity exceeds a threshold" names a direction, not a located threshold:
+nothing here says where between 180K and 390K words the sign changes. And the two
+57M cells reach their selected checkpoints at very different points in an
+identical budget (22,050 vs 95,600 steps); that gap is the finding rather than a
+confound, but it does mean "equal compute" describes the budget and the selection
+rule, not the checkpoint.
+
+25.3% of holdout strings are solved by *no* model built here, and nothing tried
+moved that figure. All results are one seed per configuration; differences under
+~0.5pp should be read as ties.

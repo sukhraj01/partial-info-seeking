@@ -1,0 +1,66 @@
+{
+  "cells": {
+    "S180": {
+      "tag": "S180",
+      "params": 19232794,
+      "words": 180000,
+      "label": "19.2M @ 180K",
+      "disjoint": 70.66134043497559,
+      "in_vocab": 77.53162450066577,
+      "gap": 6.870284065690186,
+      "avg_wrong": 2.226758793969849,
+      "ckpt_step": 88200,
+      "ckpt_epoch": 7
+    },
+    "V1": {
+      "tag": "V1",
+      "params": 19232794,
+      "words": 390204,
+      "label": "19.2M @ 390K",
+      "disjoint": 73.96138482023969,
+      "in_vocab": 79.4474034620506,
+      "gap": 5.486018641810915,
+      "avg_wrong": 2.164941338854382,
+      "ckpt_step": 95600,
+      "ckpt_epoch": 3
+    },
+    "CAP57_180K": {
+      "tag": "CAP57_180K",
+      "params": 57167130,
+      "words": 180000,
+      "label": "57M @ 180K",
+      "disjoint": 69.6404793608522,
+      "in_vocab": 74.96948513093653,
+      "gap": 5.329005770084336,
+      "avg_wrong": 2.2733269598470365,
+      "ckpt_step": 22050,
+      "ckpt_epoch": 1
+    },
+    "CAP57_390K": {
+      "tag": "CAP57_390K",
+      "params": 57167130,
+      "words": 390204,
+      "label": "57M @ 390K",
+      "disjoint": 75.32623169107856,
+      "in_vocab": 84.84964491788726,
+      "gap": 9.5234132268087,
+      "avg_wrong": 2.11513758764952,
+      "ckpt_step": 95600,
+      "ckpt_epoch": 3
+    }
+  },
+  "capacity_effect": {
+    "180K": {
+      "delta_pp": -1.0208610741233883,
+      "se_pp": 0.3048418485687893,
+      "sigma": 3.348821951173233
+    },
+    "390K": {
+      "delta_pp": 1.3648468708388748,
+      "se_pp": 0.2898043337117844,
+      "sigma": 4.709546104290626
+    }
+  },
+  "interaction_pp": 2.385707944962263,
+  "note": "Identical 95,600-step budget and identical best-val-win-rate checkpoint rule in every cell. One seed per cell; SE shown is evaluation-set noise only and does not cover training-seed variance."
+}
